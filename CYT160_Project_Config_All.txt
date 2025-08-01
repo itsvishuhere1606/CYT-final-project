@@ -1,0 +1,74 @@
+
+# ================== FILEBEAT CONFIG: /etc/filebeat/filebeat.yml ==================
+
+filebeat.inputs:
+- type: log
+  enabled: true
+  paths:
+    - /var/log/suricata/eve.json
+  json.keys_under_root: true
+  json.add_error_key: true
+  fields:
+    log_type: suricata
+
+output.elasticsearch:
+  hosts: ["https://a9e13e0e122d4277b8ef1c141ed139c8.us-central1.gcp.cloud.es.io:443"]
+  username: "elastic"
+  password: "WvePy9bMAihDgYq0joxfNrZY"
+  ssl.verification_mode: "full"
+  index: "filebeat-suricata-%{+yyyy.MM.dd}"
+
+setup.kibana:
+  host: "https://a9e13e0e122d4277b8ef1c141ed139c8.us-central1.gcp.cloud.es.io:443"
+
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: /var/log/filebeat
+  name: filebeat.log
+  keepfiles: 7
+
+# ================== SURICATA CONFIG: /etc/suricata/suricata.yaml ==================
+
+af-packet:
+  - interface: ens5
+    cluster-id: 99
+    cluster-type: cluster_flow
+
+outputs:
+  - eve-log:
+      enabled: yes
+      filetype: regular
+      filename: /var/log/suricata/eve.json
+      types:
+        - alert
+        - http
+        - dns
+        # Optionally comment others to reduce noise
+        # - flow
+        # - tls
+        # - stats
+
+# ================== MOSQUITTO MQTT BROKER CONFIG: /etc/mosquitto/mosquitto.conf ==================
+
+listener 1883 0.0.0.0
+allow_anonymous true
+persistence true
+log_dest file /var/log/mosquitto/mosquitto.log
+
+# ================== AWS SECURITY GROUP NOTES ==================
+
+- Allow inbound SSH only from your IP.
+- Allow MQTT port (1883) from sensor IP.
+- Filebeat requires outbound HTTPS to Elastic Cloud.
+- Block all other unnecessary ports.
+
+# ================== SYSTEMD SERVICE ENABLE COMMANDS ==================
+
+sudo systemctl enable suricata
+sudo systemctl start suricata
+
+sudo systemctl enable filebeat
+sudo systemctl start filebeat
+
+# ================== END ==================
